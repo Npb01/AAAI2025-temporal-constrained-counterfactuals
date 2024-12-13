@@ -28,30 +28,30 @@ Simply run ```pip install -e . --no-build-isolation --config-settings setup-file
    - Visit the following page: [MONA Download](https://www.brics.dk/mona/download.html)
    - Download the latest MONA tarball from the provided links.
 
-2. **Extract and Install MONA**:
-   - Extract the tarball using the command:
-     ```bash
-     tar -xvzf mona-<version>.tar.gz
-     ```
-   - Navigate to the extracted directory:
-     ```bash
-     cd mona-<version>
-     ```
-   - Configure, compile, and install MONA:
-     ```bash
-     ./configure
-     make
-     sudo make install
-     ```
+   2. **Extract and Install MONA**:
+      - Extract the tarball using the command:
+        ```bash
+        tar -xvzf mona-<version>.tar.gz
+        ```
+      - Navigate to the extracted directory:
+        ```bash
+        cd mona-<version>
+        ```
+      - Configure, compile, and install MONA:
+        ```bash
+        ./configure
+        make
+        sudo make install
+        ```
 
-   Replace `<version>` with the appropriate version number downloaded.
+      Replace `<version>` with the appropriate version number downloaded.
 
-3. **Verify Installation**:
-   - Ensure MONA is installed correctly by running the following command:
-     ```bash
-     mona --help
-     ```
-   - If the help message appears, MONA is installed successfully.
+   3. **Verify Installation**:
+      - Ensure MONA is installed correctly by running the following command:
+        ```bash
+        mona --help
+        ```
+      - If the help message appears, MONA is installed successfully.
 
 #### Option 2: Use an Alternative Download Source
 
@@ -66,3 +66,52 @@ If the primary download link for MONA is not working, you can try downloading it
 
 ### Step 4: Analysis of results
 The jupyter notebook included in the folder details all of the analysis performed for the paper
+
+## Datasets
+
+Instructions to download the datasets used to run the experiments above are detailed in the `README.md` file in the directory containing the code.
+
+## LTLp Formulas for Each Dataset
+
+For each dataset, we used different Linear Temporal Logic over Process Traces (LTLp) formulas to check coverage at 10%, 25%, and 50%. Below are the specific formulas used for each dataset:
+
+### BPIC2012 Dataset
+
+- **10%:** F(osentcomplete) ∧ G(osentcomplete → ¬(aacceptedcomplete) U (wcompleterenaanvraagcomplete)) ∧ F(osentbackcomplete)
+
+
+- **25%:** F(osentcomplete) ∧ G(osentcomplete → ¬(aacceptedcomplete) U (wcompleterenaanvraagcomplete)) ∧ F(osentbackcomplete) ∧ G(wcompleterenaanvraagstart → F(aacceptedcomplete)) ∧ (F(wnabellenoffertesstart) ∧ F(wnabellenoffertescomplete)) ∧ (F(oselectedcomplete) ∨ F(wvaliderenaanvraagstart))
+
+
+- **50%:** F(osentcomplete) ∧ G(osentcomplete → ¬(aacceptedcomplete) U (wcompleterenaanvraagcomplete)) ∧ G(wcompleterenaanvraagschedule → F(wcompleterenaanvraagstart)) ∧ (F(wnabellenoffertesstart) ∨ F(wnabellenoffertescomplete)) ∧ (F(oselectedcomplete) ∨ F(wvaliderenaanvraagstart)) ∧ asubmittedcomplete ∧ F(oselectedcomplete ∨ apartlysubmittedcomplete) ∧ G(ocreatedcomplete → F(osentbackcomplete)) ∧ F(afinalizedcomplete) ∨ F(apreacceptedcomplete) ∨ F(wafhandelenleadscomplete)
+
+
+### BPIC17 Dataset
+
+- **10%:** acreateapplication ∧ ¬(aconcept) U (wcompleteapplication)
+
+
+- **25%:** acreateapplication ∧ ¬(aconcept) U (wcompleteapplication) ∧ (F(ocreateoffer) → F(wcallafteroffers)) ∧ F(wcompleteapplication)
+
+
+- **50%:** acreateapplication ∧ ¬(aconcept) U (wcompleteapplication) ∧ G(ocreateoffer → (F(wcallafteroffers) ∨ F(wvalidateapplication))) ∧ (F(ocreated) → X(osentmailandonline ∨ osentonlineonly)) ∧ G((aincomplete ∨ apending) → (X(wcallincompletefiles) ∧ F(wvalidateapplication)))
+
+
+### Claim Management Dataset
+
+- **10%:** G(contacthospital → X(acceptclaim ∨ rejectclaim))
+
+- **25%:** G(contacthospital → X(acceptclaim ∨ rejectclaim)) ∧ F(createquestionnaire)
+
+- **50%:** (F(contacthospital) → F(highinsurancecheck)) ∧ G(preparenotificationcontent → X(sendnotificationbyphone ∨ sendnotificationbypost)) ∧ G(createquestionnaire → F(preparenotificationcontent)) ∧ register
+
+## Predictive Model Hyperparameter Configuration
+
+For the XGBoost predictive model, we defined the following hyperparameter search space:
+
+- The **number of estimators** (`n_estimators`) was selected from an integer range between 150 and 1000.
+- The **maximum depth** of each tree (`max_depth`) was chosen as an integer value within the range of 3 to 30.
+- The **learning rate** (`learning_rate`) was selected from a continuous uniform distribution between 0.01 and 0.5.
+- The **subsample ratio** of the training instances (`subsample`) was chosen from a continuous uniform distribution between 0.5 and 1.
+
+The hyperparameter search was performed using the **Hyperopt** library, allowing efficient exploration of the search space to find the best configuration for the XGBoost model. We ran the hyperparameter search for 20 iterations for each dataset, prefix length, and LTLp combination.
