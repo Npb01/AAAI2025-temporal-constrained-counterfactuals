@@ -1,0 +1,17 @@
+local_packages/DiCE
+local_packages/Declare4Py
+pymining==0.2
+pandas~=1.5.3
+pm4py~=2.7.8.2
+scikit-learn
+hyperopt~=0.2.7
+numpy==1.23.2
+dateparser~=1.1.8
+holidays~=0.28
+funcy~=2.0.0
+xgboost~=1.7.6
+dtreeviz
+seaborn
+paretoset
+category_encoders
+flloat

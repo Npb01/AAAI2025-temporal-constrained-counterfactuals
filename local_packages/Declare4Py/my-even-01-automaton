@@ -1,0 +1,41 @@
+digraph {
+	fake [style=invisible]
+	0 [root=true]
+	1
+	2
+	3
+	4
+	5
+	6
+	7
+	8 [shape=doublecircle]
+	9 [shape=doublecircle]
+	fake -> 0 [style=bold]
+	7 -> 9 [label="a & b"]
+	5 -> 4 [label="~b & (d | ~c)"]
+	0 -> 7 [label="~b & (d | ~c)"]
+	7 -> 3 [label="~a"]
+	6 -> 3 [label="~a"]
+	5 -> 5 [label="c & ~b & ~d"]
+	4 -> 9 [label=b]
+	0 -> 2 [label="b & c & ~d"]
+	2 -> 9 [label="a & (d | ~c)"]
+	1 -> 9 [label="d | ~c"]
+	9 -> 9 [label=True]
+	1 -> 1 [label="c & ~d"]
+	2 -> 1 [label="a & c & ~d"]
+	5 -> 1 [label="b & c & ~d"]
+	5 -> 9 [label="b & (d | ~c)"]
+	4 -> 4 [label="~b"]
+	6 -> 1 [label="a & b & c & ~d"]
+	2 -> 3 [label="~a"]
+	6 -> 4 [label="a & ~b & (d | ~c)"]
+	6 -> 5 [label="a & c & ~b & ~d"]
+	8 -> 9 [label=a]
+	3 -> 3 [label=True]
+	0 -> 8 [label="b & (d | ~c)"]
+	7 -> 4 [label="a & ~b"]
+	8 -> 3 [label="~a"]
+	0 -> 6 [label="c & ~b & ~d"]
+	6 -> 9 [label="a & b & (d | ~c)"]
+}
