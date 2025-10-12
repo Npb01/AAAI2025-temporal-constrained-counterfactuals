@@ -2,6 +2,7 @@ import logging
 
 from pandas import read_csv,DataFrame
 from pm4py import read_xes,format_dataframe,convert_to_event_log
+from pm4py.objects.log.importer.xes import importer as xes_importer #New import
 logger = logging.getLogger(__name__)
 
 
@@ -22,8 +23,10 @@ def get_log(filepath):
     # uses the xes, or csv importer depending on file type
     if filepath.endswith('.csv'):
         event_log = import_log_csv(filepath)
-    elif filepath.endswith('.xes'):
-        event_log = read_xes(filepath)
+    # elif filepath.endswith('.xes'):
+    #     event_log = read_xes(filepath)
+    elif filepath.endswith('.xes'): # use xes_importer instead of read_xes
+        event_log = xes_importer.apply(filepath)
     if isinstance(event_log,DataFrame):
         event_log = convert_to_event_log(event_log)
     return event_log

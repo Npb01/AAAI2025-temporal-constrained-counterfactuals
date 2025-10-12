@@ -198,7 +198,7 @@ def run_simple_pipeline(CONF=None, dataset_name=None):
                             test_df_correct = test_df_correct[test_df_correct['trace_id'].isin(accepted_cases)]
 
                             # Set the path for results
-                            path_results = os.path.join('results')
+                            path_results = CONF['output']
 
                             # Call the explain function with the current configuration
                             explain(

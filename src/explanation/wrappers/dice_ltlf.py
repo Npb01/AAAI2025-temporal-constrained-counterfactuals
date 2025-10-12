@@ -54,7 +54,7 @@ def dice_ltlf_explain(CONF, predictive_model, encoder, df, query_instances, meth
     features_names = df.columns.values[:-1]
     feature_selection = CONF['feature_selection']
     dataset = CONF['data'].rpartition('/')[0].replace('../datasets/', '')
-    path_results = path_results + '/' + dataset + '/' + str(percentage) + '/'
+    # path_results = path_results + '/' + dataset + '/' + str(percentage) + '/'
     try:
         if not os.path.exists(path_results):
             os.makedirs(path_results)
@@ -181,11 +181,11 @@ def dice_ltlf_explain(CONF, predictive_model, encoder, df, query_instances, meth
                 print("Directory '%s' can not be created" % path_results)
             if optimization != 'baseline':
                 filename_cf = path_results + 'cf_%s_%s_dice_%s_%s_%s_%s.csv' % (
-                dataset, black_box, feature_selection, method, optimization,
-                CONF['prefix_length'])
+                    dataset, black_box, feature_selection, method, optimization,
+                    CONF['prefix_length'])
             else:
                 filename_cf = path_results + 'cf_%s_%s_dice_%s_%s_%s.csv' % (dataset, black_box, feature_selection, method,
-                                                                        CONF['prefix_length'])
+                                                                    CONF['prefix_length'])
             if not os.path.isfile(filename_cf):
                 df_cf.to_csv(filename_cf, index=False)
             else:
