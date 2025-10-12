@@ -225,18 +225,24 @@ def run_simple_pipeline(CONF=None, dataset_name=None):
     logger.info('Done, cheers!')
 
 if __name__ == '__main__':
-    dataset_list = {
-        'synthetic_data' : [7,9,11,13],
-       'bpic2012_O_ACCEPTED-COMPLETE':[20,25,30,35],
-    'BPIC17_O_ACCEPTED':[15,20,25,30],
+    dataset_configs = {
+        'synthetic_data': {7: "10%", 9: "25%", 11: "50%", 13: "75%"},
+        'bpic2012_O_ACCEPTED-COMPLETE': {20: "10%", 25: "25%", 30: "50%", 35: "75%"},
+        'BPIC17_O_ACCEPTED': {15: "10%", 20: "25%", 25: "50%", 30: "75%"},
     }
     #The dataset_list contains the datasets and the prefix lengths reported in the paper, used for the experiments
-    for dataset,prefix_lengths in dataset_list.items():
-        for prefix in prefix_lengths:
+    for dataset, prefix_to_coverage_map in dataset_configs.items():
+        # Iterate through prefix lengths and their corresponding folder names
+        for prefix, coverage_label in prefix_to_coverage_map.items():
+                # This is the correct folder structure expected by your analysis notebook
+                # e.g., 'results/BPIC17_O_ACCEPTED/10%'
+                output_dir = os.path.join('results', dataset, coverage_label)
+                # Ensure the directory exists
+                os.makedirs(output_dir, exist_ok=True)
                 CONF = {  # This contains the configuration for the run
                     'data': os.path.join(dataset, 'full.xes'),
                     'train_val_test_split': [0.7, 0.15, 0.15],
-                    'output': os.path.join('..', 'output_data'),
+                    'output': output_dir,
                     'prefix_length_strategy': PrefixLengthStrategy.FIXED.value,
                     'prefix_length': prefix,
                     'padding': True,  # TODO, why use of padding?
