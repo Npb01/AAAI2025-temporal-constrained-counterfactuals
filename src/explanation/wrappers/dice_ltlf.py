@@ -53,8 +53,11 @@ def dice_ltlf_explain(CONF, predictive_model, encoder, df, query_instances, meth
     """
     features_names = df.columns.values[:-1]
     feature_selection = CONF['feature_selection']
-    dataset = CONF['data'].rpartition('/')[0].replace('../datasets/', '')
-    # path_results = path_results + '/' + dataset + '/' + str(percentage) + '/'
+    # dataset = CONF['data'].rpartition('/')[0].replace('../datasets/', '')
+    dataset = os.path.basename(os.path.dirname(CONF['data']))
+    print("DATASET USED: ", dataset)
+    print("CONF['data']:", CONF['data'])
+    path_results = path_results + '/' + dataset + '/' + str(percentage) + '/'
     try:
         if not os.path.exists(path_results):
             os.makedirs(path_results)
