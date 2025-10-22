@@ -4,6 +4,7 @@ import warnings
 import os
 import numpy as np
 import pandas as pd
+
 from sklearn.model_selection import train_test_split
 from src.encoding.common import get_encoded_df, EncodingType
 from src.encoding.constants import TaskGenerationType, PrefixLengthStrategy, EncodingTypeAttribute
@@ -91,6 +92,9 @@ def run_simple_pipeline(CONF=None, dataset_name=None):
         matches = re.findall(pattern, input_string)
 
         return matches
+    
+    print(f"Accuracy of the predictive model: {np.mean(actual == predicted)}")
+    logger.debug(f"Accuracy of the predictive model: {np.mean(actual == predicted)}")
 
     # Example usage
     def extract_names(text):
@@ -127,8 +131,13 @@ def run_simple_pipeline(CONF=None, dataset_name=None):
         model_strings = {
             '10%':'F(osentcomplete) & G(osentcomplete ->(!(aacceptedcomplete)U(wcompleterenaanvraagcomplete))) & F(osentbackcomplete)',
             '25%':' F(osentcomplete) & G(osentcomplete ->(!(aacceptedcomplete)U(wcompleterenaanvraagcomplete))) &F(osentbackcomplete) &  G(wcompleterenaanvraagstart -> F(aacceptedcomplete)) & (F(wnabellenoffertesstart) & F(wnabellenoffertescomplete)) &  (F(oselectedcomplete) |F(wvaliderenaanvraagstart))',
-             '50%': 'F(osentcomplete) & G(osentcomplete ->(!(aacceptedcomplete)U(wcompleterenaanvraagcomplete))) & G(wcompleterenaanvraagschedule->F(wcompleterenaanvraagstart)) & (F(wnabellenoffertesstart) | F(wnabellenoffertescomplete)) & (F(oselectedcomplete) | F(wvaliderenaanvraagstart)) &  \
-                                         asubmittedcomplete & F(oselectedcomplete | apartlysubmittedcomplete) & G(ocreatedcomplete -> F(osentbackcomplete)) & F(afinalizedcomplete) | F(apreacceptedcomplete) | F(wafhandelenleadscomplete))',
+             '50%': ('F(osentcomplete) & G(osentcomplete -> (!(aacceptedcomplete)U(wcompleterenaanvraagcomplete))) & '
+            'G(wcompleterenaanvraagschedule -> F(wcompleterenaanvraagstart)) & '
+            '(F(wnabellenoffertesstart) | F(wnabellenoffertescomplete)) & '
+            '(F(oselectedcomplete) | F(wvaliderenaanvraagstart)) & '
+            'asubmittedcomplete & F(oselectedcomplete | apartlysubmittedcomplete) & '
+            'G(ocreatedcomplete -> F(osentbackcomplete)) & '
+            '(F(afinalizedcomplete) | F(apreacceptedcomplete) | F(wafhandelenleadscomplete))')
                                }
     elif 'BPIC17' in dataset_name:
         model_strings = {'10%':'acreateapplication & (!(aconcept)U(wcompleteapplication))',
@@ -141,99 +150,119 @@ def run_simple_pipeline(CONF=None, dataset_name=None):
                         | sendnotificationbypost)) & G(createquestionnaire-> F(preparenotificationcontent)) & register'
                        }
     for percentage,model_string in model_strings.items():
-        #Here we parse the LTLf model
-        ltlf_model.parse_from_string(model_string)
+        logger.info(f"Dataset: {dataset_name}, PERCENTAGE: {percentage}")
+        if percentage == '50%':
+            #Here we parse the LTLf model
+            ltlf_model.parse_from_string(model_string)
 
-        #Here we convert the LTLf model to a DFA
-        dfa = ltl2dfa(ltlf_model.parsed_formula, backend='ltlf2dfa')
+            #Here we convert the LTLf model to a DFA
+            dfa = ltl2dfa(ltlf_model.parsed_formula, backend='ltlf2dfa')
 
-        analyzer = LTLAnalyzer(event_log, ltlf_model)
-        #Here we check the conformance of the traces in the event log with the DFA
-        conf_check_res_df = analyzer.run(
-            jobs=12,
-            minimize_automaton=False, dfa = dfa)
-        initial_result = evaluate_classifier(actual, predicted, scores)
-        logger.debug('COMPUTE EXPLANATION')
+            analyzer = LTLAnalyzer(event_log, ltlf_model)
+            #Here we check the conformance of the traces in the event log with the DFA
+            conf_check_res_df = analyzer.run(
+                jobs=12,
+                minimize_automaton=False, dfa = dfa)
+            initial_result = evaluate_classifier(actual, predicted, scores)
+            logger.debug('COMPUTE EXPLANATION')
 
-        if CONF['explanator'] is ExplainerType.DICE_LTLf.value:
-            # Combine train, validation, and test datasets
-            cf_dataset = pd.concat([train_df, val_df], ignore_index=True)
-            full_df = pd.concat([train_df, val_df, test_df])
-            cf_dataset.loc[len(cf_dataset)] = 0
-            model_path = '../experiments/process_models/process_models_new'
+            if CONF['explanator'] is ExplainerType.DICE_LTLf.value:
+                # Combine train, validation, and test datasets
+                cf_dataset = pd.concat([train_df, val_df], ignore_index=True)
+                full_df = pd.concat([train_df, val_df, test_df])
+                cf_dataset.loc[len(cf_dataset)] = 0
+                model_path = '../experiments/process_models/process_models_new'
 
-            # Filter test dataset for correct predictions with label 0
-            test_df_correct = test_df[(test_df['label'] == predicted) & (test_df['label'] == 0)]
+                # Filter test dataset for correct predictions with label 0
+                test_df_correct = test_df[(test_df['label'] == predicted) & (test_df['label'] == 0)]
+                logger.debug(f"Number of instances in the test set: {len(test_df)}")
+                logger.debug(f"Number of predictions in the test set: {len(predicted)}")
+                logger.debug(f"Number of correctly predicted negative instances: {len(test_df_correct)}")
+                # Define the different configurations
+                configurations = [
+                    #This is the baseline genetic_\varphi
+                    {'setup': {'genetic_ltlf': ['baseline']}, 'heuristics': ['heuristic_1'], 'adapted': False},
+                    #In order, we have the heuristic_1, corresponding to the APRIORI strategy, heuristic_2, corresponding to the ONLINE strategy,
+                    # and the Mutate and Retry baseline
+                    {'setup': {'genetic_ltlf': ['baseline']}, 'heuristics': ['heuristic_1', 'heuristic_2', 'mar'],
+                    'adapted': True}
+                ]
+                encoder.decode(full_df)
+                total_nr_instances = len(full_df)
+                logger.debug(f"Total number of instances in the full dataset before conformance filtering: {len(full_df)}")
 
-            # Define the different configurations
-            configurations = [
-                #This is the baseline genetic_\varphi
-                {'setup': {'genetic_ltlf': ['baseline']}, 'heuristics': ['heuristic_1'], 'adapted': False},
-                #In order, we have the heuristic_1, corresponding to the APRIORI strategy, heuristic_2, corresponding to the ONLINE strategy,
-                # and the Mutate and Retry baseline
-                {'setup': {'genetic_ltlf': ['baseline']}, 'heuristics': ['heuristic_1', 'heuristic_2', 'mar'],
-                 'adapted': True}
-            ]
-            encoder.decode(full_df)
+                # Normalize and encode the model string
+                model_strings = extract_names(Utils.normalize_formula(model_string))
+                encoder.encode(full_df)
 
-            # Normalize and encode the model string
-            model_strings = extract_names(Utils.normalize_formula(model_string))
-            encoder.encode(full_df)
-            for config in configurations:
-                setup = config['setup']
-                heuristics = config['heuristics']
-                adapted = config['adapted']
+                # Filter the full dataset and test dataset based on conformance check results
+                accepted_cases = conf_check_res_df[conf_check_res_df['accepted'] == True][
+                    'case:concept:name']
+                logger.debug(f"Number of cases in the event log accepted by the LTLf model: {len(accepted_cases)}")
+                full_df = full_df[full_df['trace_id'].isin(accepted_cases)]
+                logger.debug(f"Number of instances in the full dataset after conformance filtering: {len(full_df)}")
+                logger.debug(f"Percentage of instances retained after conformance filtering: {len(full_df) / total_nr_instances * 100:.2f}%")
+                test_df_correct = test_df_correct[test_df_correct['trace_id'].isin(accepted_cases)]
+                logger.debug(f"Number of correctly predicted negative instances after conformance filtering: {len(test_df_correct)}")
 
-                for method, optimizations in setup.items():
-                    for heuristic in heuristics:
-                        for optimization in optimizations:
-                            print(
-                                f"Running method: {method}, optimization: {optimization}, heuristic: {heuristic}, adapted: {adapted}")
+                # Set the path for results
+                # path_results = CONF['output']
+                path_results = os.path.join('results')
 
+                for config in configurations:
+                    setup = config['setup']
+                    heuristics = config['heuristics']
+                    adapted = config['adapted']
 
-                            # Filter the full dataset and test dataset based on conformance check results
-                            accepted_cases = conf_check_res_df[conf_check_res_df['accepted'] == True][
-                                'case:concept:name']
-                            full_df = full_df[full_df['trace_id'].isin(accepted_cases)]
-                            test_df_correct = test_df_correct[test_df_correct['trace_id'].isin(accepted_cases)]
+                    for method, optimizations in setup.items():
+                        for heuristic in heuristics:
+                            for optimization in optimizations:
+                                logger.info(
+                                    f"Running method: {method}, optimization: {optimization}, heuristic: {heuristic}, adapted: {adapted}")
 
-                            # Set the path for results
-                            # path_results = CONF['output']
-                            path_results = os.path.join('results')
+                                # Call the explain function with the current configuration
+                                explain(
+                                    CONF,
+                                    predictive_model,
+                                    encoder=encoder,
+                                    query_instances=test_df_correct.iloc[:, 1:],
+                                    method=method,
+                                    df=full_df.iloc[:, 1:],
+                                    optimization=optimization,
+                                    heuristic=heuristic,
+                                    model_path=model_path,
+                                    random_seed=CONF['seed'],
+                                    adapted=adapted,
+                                    ltlf_model=ltlf_model,
+                                    model_names=model_strings,
+                                    percentage=percentage,
+                                    path_results=path_results,
+                                    dfa=dfa
+                                )
 
-                            # Call the explain function with the current configuration
-                            explain(
-                                CONF,
-                                predictive_model,
-                                encoder=encoder,
-                                query_instances=test_df_correct.iloc[:, 1:],
-                                method=method,
-                                df=full_df.iloc[:, 1:],
-                                optimization=optimization,
-                                heuristic=heuristic,
-                                model_path=model_path,
-                                random_seed=CONF['seed'],
-                                adapted=adapted,
-                                ltlf_model=ltlf_model,
-                                model_names=model_strings,
-                                percentage=percentage,
-                                path_results=path_results,
-                                dfa=dfa
-                            )
+            logger.info('RESULT')
+            logger.info(f"INITIAL: {initial_result}")
+            logger.info('Done, cheers!')
 
-    logger.info('RESULT')
-    logger.info('INITIAL', initial_result)
-    logger.info('Done, cheers!')
+if __name__ == '__main__': 
 
-if __name__ == '__main__':
+    # Use logger for debugging and general info
+    logging.basicConfig(
+        level=logging.DEBUG,
+        filemode='w',  # Use 'w' to overwrite the file each time, or 'a' to append
+        filename='app.log',
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        )   
+    
     dataset_list = {
-        # 'synthetic_data' : [7,9,11,13],
-       'bpic2012_O_ACCEPTED-COMPLETE':[25,30], #[20,25,30,35]
-    # 'BPIC17_O_ACCEPTED':[15,20,25,30],
+        'synthetic_data' : [7, 9, 11, 13], #[7,9,11,13]
+       'bpic2012_O_ACCEPTED-COMPLETE': [20,25,30,35], #[20,25,30,35]
+    'BPIC17_O_ACCEPTED':[15, 20, 25, 30], #[15,20,25,30]
     }
     #The dataset_list contains the datasets and the prefix lengths reported in the paper, used for the experiments
     for dataset,prefix_lengths in dataset_list.items():
         for prefix in prefix_lengths:
+                logger.info(f"Running dataset: {dataset}, prefix length: {prefix}")
                 CONF = {  # This contains the configuration for the run
                     'data': os.path.join(dataset, 'full.xes'),
                     'train_val_test_split': [0.7, 0.15, 0.15],
