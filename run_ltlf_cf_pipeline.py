@@ -106,6 +106,7 @@ def run_simple_pipeline(CONF=None, dataset_name=None):
         cleaned_names = [re.sub(r'[^a-zA-Z]', '', match).lower().strip('f').strip('g').strip('u') for match in matches]
 
         return cleaned_names
+
     event_log = D4PyEventLog(case_name="case:concept:name")
     population_df = full_df.copy()
     encoder.decode(population_df)
@@ -191,19 +192,11 @@ def run_simple_pipeline(CONF=None, dataset_name=None):
                 total_nr_instances = len(full_df)
                 logger.debug(f"Total number of instances in the full dataset before conformance filtering: {len(full_df)}")
 
+                logging.debug(f'Formula: {model_strings}')
                 # Normalize and encode the model string
                 model_strings = extract_names(Utils.normalize_formula(model_string))
+                logger.info(f"Extracted {len(model_strings)} activities: {model_strings}")
                 encoder.encode(full_df)
-
-                # Filter the full dataset and test dataset based on conformance check results
-                accepted_cases = conf_check_res_df[conf_check_res_df['accepted'] == True][
-                    'case:concept:name']
-                logger.debug(f"Number of cases in the event log accepted by the LTLf model: {len(accepted_cases)}")
-                full_df = full_df[full_df['trace_id'].isin(accepted_cases)]
-                logger.debug(f"Number of instances in the full dataset after conformance filtering: {len(full_df)}")
-                logger.debug(f"Percentage of instances retained after conformance filtering: {len(full_df) / total_nr_instances * 100:.2f}%")
-                test_df_correct = test_df_correct[test_df_correct['trace_id'].isin(accepted_cases)]
-                logger.debug(f"Number of correctly predicted negative instances after conformance filtering: {len(test_df_correct)}")
 
                 # Set the path for results
                 # path_results = CONF['output']
@@ -219,6 +212,12 @@ def run_simple_pipeline(CONF=None, dataset_name=None):
                             for optimization in optimizations:
                                 logger.info(
                                     f"Running method: {method}, optimization: {optimization}, heuristic: {heuristic}, adapted: {adapted}")
+
+                                logger.debug("EXPLAIN INPUT DATA")
+                                logger.debug(f"Full DF encoded shape: {full_df.shape}")
+                                logger.debug(f"Full DF encoded sample: {full_df.iloc[:1, 1:]}")
+                                logger.debug(f"Query instances shape: {test_df_correct.shape}")
+                                logger.debug(f"query instances sample: {test_df_correct.iloc[:1, 1:]}")
 
                                 # Call the explain function with the current configuration
                                 explain(
@@ -255,9 +254,9 @@ if __name__ == '__main__':
         )   
     
     dataset_list = {
-        'synthetic_data' : [7, 9, 11, 13], #[7,9,11,13]
-       'bpic2012_O_ACCEPTED-COMPLETE': [20,25,30,35], #[20,25,30,35]
-    'BPIC17_O_ACCEPTED':[15, 20, 25, 30], #[15,20,25,30]
+        'synthetic_data' : [7], #[7,9,11,13]
+    #    'bpic2012_O_ACCEPTED-COMPLETE': [20,25,30,35], #[20,25,30,35]
+    # 'BPIC17_O_ACCEPTED':[15, 20, 25, 30], #[15,20,25,30]
     }
     #The dataset_list contains the datasets and the prefix lengths reported in the paper, used for the experiments
     for dataset,prefix_lengths in dataset_list.items():
