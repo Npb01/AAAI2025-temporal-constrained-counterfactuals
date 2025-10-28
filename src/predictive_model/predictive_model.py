@@ -32,10 +32,12 @@ class PredictiveModel:
         self.config = None
         self.model = None
         self.full_train_df = train_df
-        self.train_df = drop_columns(train_df)
+        if train_df is not None:
+            self.train_df = drop_columns(train_df)
         self.train_df_shaped = None
         self.full_validate_df = validate_df
-        self.validate_df = drop_columns(validate_df)
+        if validate_df is not None:
+            self.validate_df = drop_columns(validate_df)
         self.validate_df_shaped = None
 
         if model_type is ClassificationMethods.LSTM.value:
