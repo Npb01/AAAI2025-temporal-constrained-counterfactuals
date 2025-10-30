@@ -2,6 +2,7 @@ import warnings
 import os
 from datetime import datetime
 import dice_ml
+import logging
 import numpy as np
 import pandas as pd
 import pm4py
@@ -15,6 +16,8 @@ from Declare4Py.ProcessMiningTasks.ConformanceChecking.LTLAnalyzer import LTLAna
 from src.encoding.common import get_encoded_df, EncodingType
 import regex as re
 from src.predictive_model.common import ClassificationMethods
+
+logger = logging.getLogger(__name__)
 
 warnings.filterwarnings("ignore", category=UserWarning)
 
@@ -55,14 +58,14 @@ def dice_ltlf_explain(CONF, predictive_model, encoder, df, query_instances, meth
     feature_selection = CONF['feature_selection']
     # dataset = CONF['data'].rpartition('/')[0].replace('../datasets/', '')
     dataset = os.path.basename(os.path.dirname(CONF['data']))
-    print("DATASET USED: ", dataset)
-    print("CONF['data']:", CONF['data'])
+    logger.debug(f"DATASET USED: {dataset}")
+    logger.debug(f"CONF['data']: {CONF['data']}")
     path_results = path_results + '/' + dataset + '/' + str(percentage) + '/'
     try:
         if not os.path.exists(path_results):
             os.makedirs(path_results)
     except OSError as error:
-        print("Directory '%s' can not be created" % path_results)
+        logger.error("Directory '%s' can not be created" % path_results)
     if 'bpic2012' in dataset:
         dataset_created = dataset.replace('-COMPLETE', '').replace('bpic2012', 'BPIC12')
     black_box = predictive_model.model_type
@@ -75,6 +78,8 @@ def dice_ltlf_explain(CONF, predictive_model, encoder, df, query_instances, meth
     m = dice_model(predictive_model)
     dice_query_instance = dice_ml.Dice(d, m, method)
     time_train = (datetime.now() - time_start).total_seconds()
+    if len(query_instances_for_cf) < 10:
+        logger.warning(f"WARNING: Nr. of test instances: {len(query_instances_for_cf)}. Can be too few for (reliable) evaluation.")
     index_test_instances = range(len(query_instances_for_cf))
 
     encoder.decode(df)
@@ -86,9 +91,9 @@ def dice_ltlf_explain(CONF, predictive_model, encoder, df, query_instances, meth
     try:
         if not os.path.exists(model_path):
             os.makedirs(model_path)
-            print("Directory '%s' created successfully" % model_path)
+            logger.info("Directory '%s' created successfully" % model_path)
     except OSError as error:
-        print("Directory '%s' can not be created" % model_path)
+        logger.error("Directory '%s' can not be created" % model_path)
 
     for test_id, i in enumerate(index_test_instances):
         print(datetime.now(), dataset, black_box, test_id, len(index_test_instances),
@@ -98,6 +103,7 @@ def dice_ltlf_explain(CONF, predictive_model, encoder, df, query_instances, meth
         desired_cfs_all = list()
         x = query_instances_for_cf.iloc[[i]]
         predicted_outcome = predictive_model.model.predict(x.values.reshape(1, -1))[0]
+        logger.debug(f"test_id: {test_id}, i: {i}, code position: 1")
         for k in [5, 10, 15, 20]:
             time_start_i = datetime.now()
             if method == 'genetic_ltlf':
@@ -123,6 +129,7 @@ def dice_ltlf_explain(CONF, predictive_model, encoder, df, query_instances, meth
             cf_list = np.array(generated_cfs).astype('float64')
             y_pred = predictive_model.model.predict(x.values.reshape(1, -1))[0]
             time_test = (datetime.now() - time_start_i).total_seconds()
+            logger.debug(f"test_id: {test_id}, i: {i}, Number of CFs: {k}, code position: 2")
 
             x_eval = evaluate_cf_list(cf_list, x.values.reshape(1, -1), cont_feature_index, cat_feature_index,
                                       df=df,
@@ -164,6 +171,7 @@ def dice_ltlf_explain(CONF, predictive_model, encoder, df, query_instances, meth
 
                 desired_cfs_all.extend(*desired_cfs)
         filename_results = path_results + 'cfeval_%s_%s_dice_%s.csv' % (dataset, black_box, feature_selection)
+        logger.debug(f"Length cf_list_all: {len(cf_list_all)}, code position: 3")
         if len(cf_list_all) > 0:
             df_cf = pd.DataFrame(data=cf_list_all, columns=features_names)
             encoder.decode(df_cf)
@@ -179,9 +187,9 @@ def dice_ltlf_explain(CONF, predictive_model, encoder, df, query_instances, meth
             try:
                 if not os.path.exists(path_results):
                     #os.makedirs(path_cf)
-                    print("Directory '%s' created successfully" % path_results)
+                    logger.info("Directory '%s' created successfully" % path_results)
             except OSError as error:
-                print("Directory '%s' can not be created" % path_results)
+                logger.error("Directory '%s' can not be created" % path_results)
             if optimization != 'baseline':
                 filename_cf = path_results + 'cf_%s_%s_dice_%s_%s_%s_%s.csv' % (
                     dataset, black_box, feature_selection, method, optimization,
@@ -526,7 +534,7 @@ def categorical_distance(query_instance, cf_list, cat_feature_index, metric='jac
     try:
         dist = cdist(query_instance.reshape(1, -1)[:, cat_feature_index], cf_list[:, cat_feature_index], metric=metric)
     except:
-        print('Problem with categorical distance')
+        logger.error('Problem with categorical distance')
     if agg is None or agg == 'mean':
         return np.mean(dist)
 
@@ -721,7 +729,7 @@ def conformance_score(encoder, df, features_names, ltlf_model, dfa):
     )
     conformance_score = conf_check_res_df['accepted'].replace({True: 1, False: 0})
     population_conformance = conf_check_res_df[conf_check_res_df['accepted'] == True].shape[0] / conf_check_res_df.shape[0]
-    print('Conformance score:', population_conformance)
+    logger.info(f'Conformance score: {population_conformance}')
     return population_conformance
 
 # Example usage
