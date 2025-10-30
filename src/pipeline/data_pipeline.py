@@ -86,8 +86,6 @@ class DataPipeline:
             df = df.copy()
             
         logger.info("Creating D4Py event log from encoded dataframe")
-        logger.debug(f"Input df shape: {df.shape}")
-        logger.debug(f"Input df sample before decode:\n{df.iloc[0]}")
         
         # Decode
         decoded_df = df.copy()
