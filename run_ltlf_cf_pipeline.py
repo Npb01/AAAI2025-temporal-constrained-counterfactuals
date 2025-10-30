@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix
 from src.encoding.common import get_encoded_df, EncodingType
 from src.encoding.constants import TaskGenerationType, PrefixLengthStrategy, EncodingTypeAttribute
 from src.encoding.time_encoding import TimeEncodingType
@@ -140,10 +141,14 @@ def run_simple_pipeline(CONF=None, dataset_name=None):
             'G(ocreatedcomplete -> F(osentbackcomplete)) & '
             '(F(afinalizedcomplete) | F(apreacceptedcomplete) | F(wafhandelenleadscomplete))')
                                }
-    elif 'BPIC17' in dataset_name:
+    elif 'BPIC17' or 'sampled_logs' in dataset_name:
         model_strings = {'10%':'acreateapplication & (!(aconcept)U(wcompleteapplication))',
                          '25%':'acreateapplication & (!(aconcept)U(wcompleteapplication)) & (F(ocreateoffer) -> F(wcallafteroffers)) & F(wcompleteapplication)',
                          '50%':'acreateapplication & (!(aconcept)U(wcompleteapplication)) & (G(ocreateoffer) -> (F(wcallafteroffers) | F(wvalidateapplication))) & (F(ocreated) -> X(osentmailandonline | osentonlineonly)) & G((aincomplete | apending) -> (X(wcallincompletefiles) & F(wvalidateapplication)))' }
+    # elif 'sampled_logs' in dataset_name:
+    #     model_strings = {'10%':'acreateapplication & (!(aconcept)U(wcompleteapplication))',
+    #                      '25%':'acreateapplication & (!(aconcept)U(wcompleteapplication)) & (F(ocreateoffer) -> F(wcallafteroffers)) & F(wcompleteapplication)',
+    #                      '50%':'acreateapplication & (!(aconcept)U(wcompleteapplication)) & (G(ocreateoffer) -> (F(wcallafteroffers) | F(wvalidateapplication))) & (F(ocreated) -> X(osentmailandonline | osentonlineonly)) & G((aincomplete | apending) -> (X(wcallincompletefiles) & F(wvalidateapplication)))' }
     elif 'synthetic_data' in dataset_name:
         model_strings={'10%':'G(contacthospital -> X(acceptclaim | rejectclaim))',
                        '25%':'G(contacthospital -> X(acceptclaim | rejectclaim)) & F(createquestionnaire)',
@@ -152,7 +157,7 @@ def run_simple_pipeline(CONF=None, dataset_name=None):
                        }
     for percentage,model_string in model_strings.items():
         logger.info(f"Dataset: {dataset_name}, PERCENTAGE: {percentage}")
-        if percentage == '50%':
+        if percentage == '10%':
             #Here we parse the LTLf model
             ltlf_model.parse_from_string(model_string)
 
@@ -179,6 +184,13 @@ def run_simple_pipeline(CONF=None, dataset_name=None):
                 logger.debug(f"Number of instances in the test set: {len(test_df)}")
                 logger.debug(f"Number of predictions in the test set: {len(predicted)}")
                 logger.debug(f"Number of correctly predicted negative instances: {len(test_df_correct)}")
+
+                # Compute and display confusion matrix
+                print(f"Nr of positive cases in the test set: {sum(test_df['label'])}")
+                print(f"Nr of negative cases in the test set: {len(test_df) - sum(test_df['label'])}")
+                cm = confusion_matrix(test_df['label'], predicted)
+                print(f"Confusion Matrix:\n{cm}")
+
                 # Define the different configurations
                 configurations = [
                     #This is the baseline genetic_\varphi
@@ -192,11 +204,19 @@ def run_simple_pipeline(CONF=None, dataset_name=None):
                 total_nr_instances = len(full_df)
                 logger.debug(f"Total number of instances in the full dataset before conformance filtering: {len(full_df)}")
 
-                logging.debug(f'Formula: {model_strings}')
                 # Normalize and encode the model string
                 model_strings = extract_names(Utils.normalize_formula(model_string))
-                logger.info(f"Extracted {len(model_strings)} activities: {model_strings}")
                 encoder.encode(full_df)
+
+                # Filter the full dataset and test dataset based on conformance check results
+                accepted_cases = conf_check_res_df[conf_check_res_df['accepted'] == True][
+                    'case:concept:name']
+                logger.debug(f"Number of cases in the event log accepted by the LTLf model: {len(accepted_cases)}")
+                full_df = full_df[full_df['trace_id'].isin(accepted_cases)]
+                logger.debug(f"Number of instances in the full dataset after conformance filtering: {len(full_df)}")
+                logger.debug(f"Percentage of instances retained after conformance filtering: {len(full_df) / total_nr_instances * 100:.2f}%")
+                test_df_correct = test_df_correct[test_df_correct['trace_id'].isin(accepted_cases)]
+                logger.debug(f"Number of correctly predicted negative instances after conformance filtering: {len(test_df_correct)}")
 
                 # Set the path for results
                 # path_results = CONF['output']
@@ -212,13 +232,6 @@ def run_simple_pipeline(CONF=None, dataset_name=None):
                             for optimization in optimizations:
                                 logger.info(
                                     f"Running method: {method}, optimization: {optimization}, heuristic: {heuristic}, adapted: {adapted}")
-
-                                logger.debug("EXPLAIN INPUT DATA")
-                                logger.debug(f"Full DF encoded shape: {full_df.shape}")
-                                logger.debug(f"Full DF encoded sample: {full_df.iloc[:1, 1:]}")
-                                logger.debug(f"Query instances shape: {test_df_correct.shape}")
-                                logger.debug(f"query instances sample: {test_df_correct.iloc[:1, 1:]}")
-
                                 # Call the explain function with the current configuration
                                 explain(
                                     CONF,
@@ -254,9 +267,10 @@ if __name__ == '__main__':
         )   
     
     dataset_list = {
-        'synthetic_data' : [7], #[7,9,11,13]
+        # 'synthetic_data' : [7], #[7,9,11,13]
     #    'bpic2012_O_ACCEPTED-COMPLETE': [20,25,30,35], #[20,25,30,35]
     # 'BPIC17_O_ACCEPTED':[15, 20, 25, 30], #[15,20,25,30]
+    'sampled_logs': [15], #[15,20,25,30]
     }
     #The dataset_list contains the datasets and the prefix lengths reported in the paper, used for the experiments
     for dataset,prefix_lengths in dataset_list.items():
