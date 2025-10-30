@@ -104,7 +104,7 @@ def dice_ltlf_explain(CONF, predictive_model, encoder, df, query_instances, meth
         x_eval_list = list()
         desired_cfs_all = list()
         x = query_instances_for_cf.iloc[[i]]
-        predicted_outcome = predictive_model.model.predict(x.values.reshape(1, -1))[0]
+        # predicted_outcome = predictive_model.model.predict(x.values.reshape(1, -1))[0] # not used
         logger.debug(f"test_id: {test_id}, i: {i}, code position: 1")
         for k in [5, 10, 15, 20]:
             time_start_i = datetime.now()
