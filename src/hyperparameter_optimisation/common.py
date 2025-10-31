@@ -1,4 +1,5 @@
 from enum import Enum
+import logging
 
 import hyperopt
 import numpy as np
@@ -6,6 +7,8 @@ from hyperopt import Trials, hp, fmin
 from hyperopt.pyll import scope
 
 from src.predictive_model.common import ClassificationMethods, RegressionMethods
+
+logger = logging.getLogger(__name__)
 
 
 class HyperoptTarget(Enum):
@@ -45,6 +48,16 @@ def _get_space(model_type) -> dict:
             'max_depth': scope.int(hp.quniform('max_depth', 3, 30, 1)),
             'learning_rate': hp.uniform('learning_rate', 0.01, 0.5),
             'subsample': hp.uniform('subsample', 0.5, 1),
+            # scale_pos_weight: balances positive and negative classes (seems to be necessary for bpi2017)
+            # For 60/40 split, ideal value is around 0.4/0.6 ≈ 0.67
+            # Focusing on range around this value
+            'scale_pos_weight': hp.uniform('scale_pos_weight', 0.5, 1.5),
+            # min_child_weight: prevents overfitting to majority class
+            # Lowering max to avoid overly conservative splits that predict only one class
+            'min_child_weight': hp.uniform('min_child_weight', 1, 5),
+            # gamma: minimum loss reduction required to make split
+            # Adding this to help model make more informative splits
+            'gamma': hp.uniform('gamma', 0, 0.5),
         }
 
     elif model_type is ClassificationMethods.SGDCLASSIFIER.value:
@@ -156,6 +169,14 @@ def retrieve_best_model(predictive_model, model_type, max_evaluations, target,se
         trials=trials,rstate=np.random.default_rng(seed)
     )
     best_candidate = trials.best_trial['result']
+    
+    # Log the best configuration found
+    logger.info(f"\n{'='*60}")
+    logger.info(f"BEST MODEL FOUND:")
+    logger.info(f"  Loss: {-best_candidate['loss']:.4f}")
+    logger.info(f"  Config: {best_candidate['config']}")
+    logger.info(f"  Result metrics: {best_candidate['result']}")
+    logger.info(f"{'='*60}\n")
 
     return best_candidate['model'], best_candidate['config']
 

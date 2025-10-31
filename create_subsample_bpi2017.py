@@ -19,8 +19,8 @@ TIMESTAMP_COL = 'time:timestamp'
 # Split & Sample Sizes
 # Ratios for the chronological split
 TRAIN_RATIO = 0.70
-VAL_RATIO = 0.10
-# TEST_RATIO is the remainder (1.0 - 0.70 - 0.10 = 0.20)
+VAL_RATIO = 0.15
+# TEST_RATIO is the remainder (1.0 - 0.70 - 0.15 = 0.15)
 
 # Target number of CASES for your *final* sampled files
 N_SAMPLE_CASES = 5000
