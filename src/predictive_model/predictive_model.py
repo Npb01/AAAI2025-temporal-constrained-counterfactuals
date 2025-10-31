@@ -46,8 +46,10 @@ class PredictiveModel:
             self.train_label = shape_label_df(self.full_train_df)
             self.validate_label = shape_label_df(self.full_validate_df)
         elif model_type is ClassificationMethods.XGBOOST.value:
+            # Convert prefix columns to categorical for both train and validation
             prefix_columns = [col for col in self.train_df.columns if 'prefix' in col]
             self.train_df[prefix_columns] = self.train_df[prefix_columns].astype('category')
+            self.validate_df[prefix_columns] = self.validate_df[prefix_columns].astype('category')
 
         elif model_type is ClassificationMethods.MLP.value:
             self.train_label = self.full_train_df['label'].nunique()
@@ -69,6 +71,15 @@ class PredictiveModel:
             if self.model_type in [item.value for item in ClassificationMethods]:
                 predicted, scores = self._output_model(model=model)
                 result = evaluate_classifier(actual, predicted, scores, loss=target)
+                
+                # Log if model predicts only one class during hyperparameter optimization
+                unique_preds = np.unique(predicted)
+                if len(unique_preds) == 1:
+                    logger.warning(f"Trial predicting only class {unique_preds[0]} with config: {config}")
+                    # Heavily penalize models that predict only one class
+                    # This ensures they won't be selected as the "best" model
+                    result['loss'] = 0.0  # Worst possible score
+                
             elif self.model_type in [item.value for item in RegressionMethods]:
                 predicted = model.predict(self.validate_df)
                 result = evaluate_regressor(actual, predicted, loss=target)
@@ -98,8 +109,11 @@ class PredictiveModel:
         elif self.model_type == ClassificationMethods.KNN.value:
             model = KNeighborsClassifier(**config)
         elif self.model_type == ClassificationMethods.XGBOOST.value:
-            model = XGBClassifier(**config
-                                  ,enable_categorical=True,tree_method='hist'
+            model = XGBClassifier(**config,
+                                  enable_categorical=True,
+                                  tree_method='hist',
+                                  random_state=self.CONF.get('seed', 42),
+                                  verbosity=0  # Reduce verbosity during hyperopt
                                   )
         elif self.model_type == ClassificationMethods.SGDCLASSIFIER.value:
             model = SGDClassifier(**config)

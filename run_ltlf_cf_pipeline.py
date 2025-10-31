@@ -57,6 +57,12 @@ def run_simple_pipeline(CONF=None, dataset_name=None):
                                          .replace(')','').lower())
     logger.debug('ENCODE DATA')
     encoder, full_df = get_encoded_df(log=log, CONF=CONF)
+    
+    # Log class distribution in full dataset
+    logger.info(f"Full dataset size: {len(full_df)}")
+    logger.info(f"Class distribution in full dataset:\n{full_df['label'].value_counts()}")
+    logger.info(f"Class distribution (%):\n{full_df['label'].value_counts(normalize=True) * 100}")
+    
     logger.debug('TRAIN PREDICTIVE MODEL')
     train_size = CONF['train_val_test_split'][0]
     val_size = CONF['train_val_test_split'][1]
@@ -64,6 +70,19 @@ def run_simple_pipeline(CONF=None, dataset_name=None):
     if train_size + val_size + test_size != 1.0:
         raise Exception('Train-val-test split does not sum up to 1')
     train_df,val_df,test_df = np.split(full_df,[int(train_size*len(full_df)), int((train_size+val_size)*len(full_df))])
+    
+    # Log class distribution in each split
+    logger.info(f"\nTrain set size: {len(train_df)}")
+    logger.info(f"Train class distribution:\n{train_df['label'].value_counts()}")
+    logger.info(f"Train class distribution (%):\n{train_df['label'].value_counts(normalize=True) * 100}")
+    
+    logger.info(f"\nValidation set size: {len(val_df)}")
+    logger.info(f"Validation class distribution:\n{val_df['label'].value_counts()}")
+    logger.info(f"Validation class distribution (%):\n{val_df['label'].value_counts(normalize=True) * 100}")
+    
+    logger.info(f"\nTest set size: {len(test_df)}")
+    logger.info(f"Test class distribution:\n{test_df['label'].value_counts()}")
+    logger.info(f"Test class distribution (%):\n{test_df['label'].value_counts(normalize=True) * 100}")
 
     predictive_model = PredictiveModel(CONF, CONF['predictive_model'], train_df, val_df)
     predictive_model.model, predictive_model.config = retrieve_best_model(
@@ -80,12 +99,50 @@ def run_simple_pipeline(CONF=None, dataset_name=None):
         predicted = np.argmax(probabilities, axis=1)
         scores = np.amax(probabilities, axis=1)
     elif predictive_model.model_type not in (ClassificationMethods.LSTM.value):
-        predicted = predictive_model.model.predict(drop_columns(test_df))
-        scores = predictive_model.model.predict_proba(drop_columns(test_df))[:, 1]
+        # Prepare test data with same preprocessing as training data
+        test_df_processed = drop_columns(test_df.copy())
+        
+        # For XGBoost, ensure categorical columns match training data format
+        if predictive_model.model_type == ClassificationMethods.XGBOOST.value:
+            prefix_columns = [col for col in test_df_processed.columns if 'prefix' in col]
+            
+            # CRITICAL: Need to ensure categories match between train and test
+            # First, get the categories from training data
+            train_categories = {}
+            for col in prefix_columns:
+                if col in predictive_model.train_df.columns:
+                    train_categories[col] = predictive_model.train_df[col].cat.categories
+            
+            # Apply the same categories to test data
+            for col in prefix_columns:
+                if col in train_categories:
+                    test_df_processed[col] = pd.Categorical(
+                        test_df_processed[col], 
+                        categories=train_categories[col]
+                    )
+                else:
+                    test_df_processed[col] = test_df_processed[col].astype('category')
+            
+            logger.debug(f"Converted {len(prefix_columns)} prefix columns to categorical for test set with matching categories")
+        
+        predicted = predictive_model.model.predict(test_df_processed)
+        scores = predictive_model.model.predict_proba(test_df_processed)[:, 1]
 
     actual = test_df['label']
     if predictive_model.model_type is ClassificationMethods.LSTM.value:
         actual = np.array(actual.to_list())
+    
+    # Log prediction distribution
+    unique_predictions, counts = np.unique(predicted, return_counts=True)
+    logger.info(f"\nPredicted class distribution:")
+    for pred_class, count in zip(unique_predictions, counts):
+        logger.info(f"  Class {pred_class}: {count} ({count/len(predicted)*100:.2f}%)")
+    
+    # Check if model is predicting only one class
+    if len(unique_predictions) == 1:
+        logger.warning(f"WARNING: Model is only predicting class {unique_predictions[0]}!")
+        logger.warning("This indicates a severe class imbalance or model training issue.")
+    
     def extract_matching_substrings(input_string, alphabet):
         pattern = '|'.join(re.escape(sub) for sub in alphabet)
 
@@ -157,7 +214,7 @@ def run_simple_pipeline(CONF=None, dataset_name=None):
                        }
     for percentage,model_string in model_strings.items():
         logger.info(f"Dataset: {dataset_name}, PERCENTAGE: {percentage}")
-        if percentage == '10%':
+        if percentage in ['50%']:
             #Here we parse the LTLf model
             ltlf_model.parse_from_string(model_string)
 
@@ -270,7 +327,7 @@ if __name__ == '__main__':
         # 'synthetic_data' : [7], #[7,9,11,13]
     #    'bpic2012_O_ACCEPTED-COMPLETE': [20,25,30,35], #[20,25,30,35]
     # 'BPIC17_O_ACCEPTED':[15, 20, 25, 30], #[15,20,25,30]
-    'sampled_logs': [15], #[15,20,25,30]
+    'sampled_logs': [20,25,30], #[15,20,25,30]
     }
     #The dataset_list contains the datasets and the prefix lengths reported in the paper, used for the experiments
     for dataset,prefix_lengths in dataset_list.items():
