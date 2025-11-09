@@ -48,6 +48,13 @@ DATASETS = {
         ltl_models={'10%':'acreateapplication & (!(aconcept)U(wcompleteapplication))',
                          '25%':'acreateapplication & (!(aconcept)U(wcompleteapplication)) & (F(ocreateoffer) -> F(wcallafteroffers)) & F(wcompleteapplication)',
                          '50%':'acreateapplication & (!(aconcept)U(wcompleteapplication)) & (G(ocreateoffer) -> (F(wcallafteroffers) | F(wvalidateapplication))) & (F(ocreated) -> X(osentmailandonline | osentonlineonly)) & G((aincomplete | apending) -> (X(wcallincompletefiles) & F(wvalidateapplication)))' }
+    ),
+    'sampled_logs': DatasetDefinition(
+        name='sampled_logs',
+        prefix_lengths=[15, 20, 25, 30],
+        ltl_models={'10%':'acreateapplication & (!(aconcept)U(wcompleteapplication))',
+                         '25%':'acreateapplication & (!(aconcept)U(wcompleteapplication)) & (F(ocreateoffer) -> F(wcallafteroffers)) & F(wcompleteapplication)',
+                         '50%':'acreateapplication & (!(aconcept)U(wcompleteapplication)) & (G(ocreateoffer) -> (F(wcallafteroffers) | F(wvalidateapplication))) & (F(ocreated) -> X(osentmailandonline | osentonlineonly)) & G((aincomplete | apending) -> (X(wcallincompletefiles) & F(wvalidateapplication)))' }
     )
 }
 
