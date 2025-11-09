@@ -13,12 +13,12 @@ This project generates temporal counterfactual explanations for predictive proce
   - [Installing UV Package Manager](#installing-uv-package-manager)
   - [Installing Dependencies](#installing-dependencies)
   - [Installing MONA](#installing-mona)
+  - [Datasets](#datasets)
 - [Running Experiments](#running-experiments)
-  - [Quick Start - Full Pipeline](#quick-start---full-pipeline)
-  - [Individual Pipeline Components](#individual-pipeline-components)
-- [Datasets](#datasets)
+  - [Quick Start - Full Original Pipeline](#quick-start---(mostly)-original-full-pipeline)
+- [New Pipeline Implementation](new-(unfinished)-pipeline-structure)
+  - [New Individual Pipeline Components](#individual-pipeline-components)
 - [Documentation](#documentation)
-- [Citation](#citation)
 
 ## Installation
 
@@ -79,14 +79,16 @@ MONA (Monadic second-order logic of One or two successors) is required for LTLf 
 
 #### Manual MONA Installation (Recommended for Windows)
 
-The original MONA installation guide did not work reliably. Here's the updated procedure:
+The original MONA installation guide did not work reliably. In this guide, the authors proposed downloading it through the requirements file or downloading it manually from the [MONA Website](https://www.brics.dk/mona/index.html). Here's the updated procedure that worked for us:
 
 **On Windows (using WSL):**
 
+[Windows WSL Guide](https://learn.microsoft.com/en-us/windows/wsl/install)
 1. **Install WSL** (if not already installed):
    ```powershell
    wsl --install
    ```
+   We used the Ubuntu distribution.
    Restart your computer if this is your first time installing WSL.
 
 2. **Open WSL terminal** and install MONA:
@@ -113,27 +115,6 @@ The original MONA installation guide did not work reliably. Here's the updated p
    mona --version
    ```
 
-**On macOS/Linux:**
-```bash
-# Install dependencies (Ubuntu/Debian)
-sudo apt-get update
-sudo apt-get install build-essential flex bison
-
-# Or on macOS with Homebrew
-brew install flex bison
-
-# Download and install MONA
-wget http://www.brics.dk/mona/download/mona-1.4-18.tar.gz
-tar -xzf mona-1.4-18.tar.gz
-cd mona-1.4
-./configure
-make
-sudo make install
-
-# Verify installation
-mona --version
-```
-
 #### Alternative: Install without MONA
 
 If you encounter issues with MONA, you can install the package without it:
@@ -144,9 +125,37 @@ pip install -e . --no-build-isolation --config-settings setup-file=setup_no_mona
 
 Note: Some LTLf-related features will not be available without MONA.
 
+### Datasets
+- To download the 3 datasets used in this paper, due to the 50MB limit on the supplementary material, please download them from the following link:
+   - [Drive datasets link](https://drive.google.com/file/d/1pFZVNgPZibwGPwqLoNC-M-8KAA-FZff2/view?usp=drive_link)
+- Make sure to save the datasets inside the repository folder in separate folders for each dataset; BPIC17_O_ACCEPTED/full.xes, bpic2012_O_ACCEPTED-COMPLETE/full.xes, synthetic_data/full.xes
+
+The experiments use one synthetic dataset and 2 real-world event log datasets:
+
+1. **BPIC 2017** - Dutch loan application process
+   - Original dataset: `BPIC17_O_ACCEPTED/full.xes`
+   - Sampled version: `sampled_logs/` (created by `create_subsample_bpi2017.py`)
+   - Prefix lengths tested: 15, 20, 25, 30
+
+2. **BPIC 2012** - Dutch financial institution loan application
+   - Dataset: `bpic2012_O_ACCEPTED-COMPLETE/full.xes`
+   - Prefix lengths tested: 20, 25, 30, 35
+
+3. **Synthetic Data** - Insurance claim management process
+   - Dataset: `synthetic_data/full.xes`
+   - Prefix lengths tested: 7, 9, 11, 13
+  
+### Dataset Configuration
+
+Datasets are configured in `dataset_confs.py` with specifications for:
+- Timestamp columns
+- Activity columns
+- Case ID columns
+- Labeling strategies
+
 ## Running Experiments
 
-### Quick Start - Full Pipeline
+### Quick Start - Full (mostly) Original Pipeline
 
 To reproduce the experiments from our paper on the BPIC17 dataset:
 
@@ -162,12 +171,14 @@ To reproduce the experiments from our paper on the BPIC17 dataset:
    python run_ltlf_cf_pipeline.py
    ```
    
-   This runs the full pipeline including:
+   This runs the full pipeline, including:
    - Model training for different prefix lengths
    - LTLf conformance checking at multiple complexity levels (10%, 25%, 50%)
    - Counterfactual generation with various configurations
    - Results saved to `results/` directory
 
+
+## New (unfinished) Pipeline Structure
 ### Individual Pipeline Components
 
 Our improved pipeline structure allows you to run individual components separately for more flexibility:
@@ -252,32 +263,7 @@ python run_full_pipeline.py --datasets sampled_logs BPIC17_O_ACCEPTED
 python run_full_pipeline.py --seed 123 --ltl-percentages 25%
 ```
 
-**Output:** Comprehensive results for all configurations in `results/` directory
-
-## Datasets
-
-The experiments use three real-world event log datasets:
-
-1. **BPIC 2017** - Dutch loan application process
-   - Original dataset: `BPIC17_O_ACCEPTED/full.xes`
-   - Sampled version: `sampled_logs/` (created by `create_subsample_bpi2017.py`)
-   - Prefix lengths tested: 15, 20, 25, 30
-
-2. **BPIC 2012** - Dutch financial institution loan application
-   - Dataset: `bpic2012_O_ACCEPTED-COMPLETE/full.xes`
-   - Prefix lengths tested: 20, 25, 30, 35
-
-3. **Synthetic Data** - Insurance claim management process
-   - Dataset: `synthetic_data/full.xes`
-   - Prefix lengths tested: 7, 9, 11, 13
-
-### Dataset Configuration
-
-Datasets are configured in `dataset_confs.py` with specifications for:
-- Timestamp columns
-- Activity columns
-- Case ID columns
-- Labeling strategies
+**Output:** Results for all configurations in `results/` directory
 
 ## Documentation
 
@@ -292,7 +278,7 @@ The wiki includes:
 
 ```
 .
-├── create_subsample_bpi2017.py    # Create stratified subsample of BPIC17
+├── create_subsample_bpi2017.py    # Create stratified subsample of BPIC17 (new)
 ├── run_ltlf_cf_pipeline.py        # Run complete experiment (original)
 ├── run_full_pipeline.py           # Run pipeline for all configs (new)
 ├── train_model.py                 # Train predictive models (new)
@@ -334,28 +320,35 @@ The wiki includes:
 ## Results Analysis
 
 Analysis of experimental results can be found in:
+- 
 - `results_analysis.ipynb` - Jupyter notebook with visualizations and statistical analysis
 - `results/` directory - Raw experimental outputs organized by dataset and configuration
 
-## LTLf Formulas for Each Dataset
+## LTLp Formulas for Each Dataset
 
-For each dataset, we used different Linear Temporal Logic over Finite traces (LTLf) formulas to check coverage at 10%, 25%, and 50%. Below are the specific formulas used:
+For each dataset, we used different Linear Temporal Logic over Process Traces (LTLp) formulas to check coverage at 10%, 25%, and 50%. Below are the specific formulas used for each dataset:
 
 ### BPIC2012 Dataset
 
 - **10%:** F(osentcomplete) ∧ G(osentcomplete → ¬(aacceptedcomplete) U (wcompleterenaanvraagcomplete)) ∧ F(osentbackcomplete)
 
+
 - **25%:** F(osentcomplete) ∧ G(osentcomplete → ¬(aacceptedcomplete) U (wcompleterenaanvraagcomplete)) ∧ F(osentbackcomplete) ∧ G(wcompleterenaanvraagstart → F(aacceptedcomplete)) ∧ (F(wnabellenoffertesstart) ∧ F(wnabellenoffertescomplete)) ∧ (F(oselectedcomplete) ∨ F(wvaliderenaanvraagstart))
 
+
 - **50%:** F(osentcomplete) ∧ G(osentcomplete → ¬(aacceptedcomplete) U (wcompleterenaanvraagcomplete)) ∧ G(wcompleterenaanvraagschedule → F(wcompleterenaanvraagstart)) ∧ (F(wnabellenoffertesstart) ∨ F(wnabellenoffertescomplete)) ∧ (F(oselectedcomplete) ∨ F(wvaliderenaanvraagstart)) ∧ asubmittedcomplete ∧ F(oselectedcomplete ∨ apartlysubmittedcomplete) ∧ G(ocreatedcomplete → F(osentbackcomplete)) ∧ F(afinalizedcomplete) ∨ F(apreacceptedcomplete) ∨ F(wafhandelenleadscomplete)
+
 
 ### BPIC17 Dataset
 
 - **10%:** acreateapplication ∧ ¬(aconcept) U (wcompleteapplication)
 
+
 - **25%:** acreateapplication ∧ ¬(aconcept) U (wcompleteapplication) ∧ (F(ocreateoffer) → F(wcallafteroffers)) ∧ F(wcompleteapplication)
 
+
 - **50%:** acreateapplication ∧ ¬(aconcept) U (wcompleteapplication) ∧ G(ocreateoffer → (F(wcallafteroffers) ∨ F(wvalidateapplication))) ∧ (F(ocreated) → X(osentmailandonline ∨ osentonlineonly)) ∧ G((aincomplete ∨ apending) → (X(wcallincompletefiles) ∧ F(wvalidateapplication)))
+
 
 ### Claim Management Dataset
 
@@ -364,17 +357,6 @@ For each dataset, we used different Linear Temporal Logic over Finite traces (LT
 - **25%:** G(contacthospital → X(acceptclaim ∨ rejectclaim)) ∧ F(createquestionnaire)
 
 - **50%:** (F(contacthospital) → F(highinsurancecheck)) ∧ G(preparenotificationcontent → X(sendnotificationbyphone ∨ sendnotificationbypost)) ∧ G(createquestionnaire → F(preparenotificationcontent)) ∧ register
-
-## Predictive Model Hyperparameter Configuration
-
-For the XGBoost predictive model, we defined the following hyperparameter search space:
-
-- The **number of estimators** (`n_estimators`) was selected from an integer range between 150 and 1000.
-- The **maximum depth** of each tree (`max_depth`) was chosen as an integer value within the range of 3 to 30.
-- The **learning rate** (`learning_rate`) was selected from a continuous uniform distribution between 0.01 and 0.5.
-- The **subsample ratio** of the training instances (`subsample`) was chosen from a continuous uniform distribution between 0.5 and 1.
-
-The hyperparameter search was performed using the **Hyperopt** library, allowing efficient exploration of the search space to find the best configuration for the XGBoost model. We ran the hyperparameter search for 20 iterations for each dataset, prefix length, and LTLf combination.
 
 ## Requirements
 
@@ -388,7 +370,7 @@ Key dependencies include:
 - dice-ml - Counterfactual generation
 - MONA - Automata toolkit (external)
 
-See `requirements.txt` for complete list with versions.
+See `requirements.txt` for a complete list with versions.
 
 ## Troubleshooting
 
@@ -409,15 +391,7 @@ See `requirements.txt` for complete list with versions.
 
 ## Contributing
 
-This is a research project. For questions or contributions, please open an issue on GitHub.
-```
+This is a research project for the Seminar Process Analytics (2IMI00) by two MSc Data Science and Artificial AI students at the TUe. For questions or contributions, please open an issue on GitHub.
 
-## Repository
-
-Main repository: [https://github.com/Npb01/AAAI2025-temporal-constrained-counterfactuals](https://github.com/Npb01/AAAI2025-temporal-constrained-counterfactuals)
-
-Branch: `improve-prediction-model`
-
----
 
 **For more detailed documentation, visit the [Wiki](https://github.com/Npb01/AAAI2025-temporal-constrained-counterfactuals/wiki).**
