@@ -321,8 +321,9 @@ The wiki includes:
 
 Analysis of experimental results can be found in:
 - 
-- `results_analysis.ipynb` - Jupyter notebook with visualizations and statistical analysis
-- `results/` directory - Raw experimental outputs organized by dataset and configuration
+- `results_analysis_2_Datasets.ipynb` - Jupyter notebook with visualizations and statistical analysis on the synthetic and a subset of BPIC2017 datasets
+- `results_analysis_3_Datasets.ipynb` - Jupyter notebook with visualizations and statistical analysis on the synthetic and a subset of BPIC2017 datasets, as well as on some results on the BPIC2012 dataset.
+- `results/` directory - Raw experimental outputs organized by dataset and configuration. Here, our obtained results are stored as well. This will be overwritten when running the experiments again.
 
 ## LTLp Formulas for Each Dataset
 
