@@ -16,7 +16,7 @@ This project generates temporal counterfactual explanations for predictive proce
   - [Datasets](#datasets)
 - [Running Experiments](#running-experiments)
   - [Quick Start - Full Original Pipeline](https://github.com/Npb01/AAAI2025-temporal-constrained-counterfactuals/tree/improve-prediction-model?tab=readme-ov-file#quick-start---full-mostly-original-pipeline)
-- [New Pipeline Implementation](new-(unfinished)-pipeline-structure)
+- [New Pipeline Implementation](https://github.com/Npb01/AAAI2025-temporal-constrained-counterfactuals/blob/improve-prediction-model/README.md#new-unfinished-pipeline-structure)
   - [New Individual Pipeline Components](#individual-pipeline-components)
 - [Documentation](#documentation)
 
