@@ -54,6 +54,7 @@ def dice_ltlf_explain(CONF, predictive_model, encoder, df, query_instances, meth
     :param percentage: Coverage percentage value used for counterfactual generation.
     :return:
     """
+
     features_names = df.columns.values[:-1]
     feature_selection = CONF['feature_selection']
     # dataset = CONF['data'].rpartition('/')[0].replace('../datasets/', '')
@@ -73,6 +74,7 @@ def dice_ltlf_explain(CONF, predictive_model, encoder, df, query_instances, meth
         df.iloc[:, :-1], encoder)
     ratio_cont = len(continuous_features) / len(categorical_features)
     time_start = datetime.now()
+    logger.info(f"Nr. of query instances: {len(query_instances)}")
     query_instances_for_cf = query_instances.iloc[:2, :-1]
     d = dice_ml.Data(dataframe=df, continuous_features=continuous_features, outcome_name='label')
     m = dice_model(predictive_model)
@@ -102,7 +104,7 @@ def dice_ltlf_explain(CONF, predictive_model, encoder, df, query_instances, meth
         x_eval_list = list()
         desired_cfs_all = list()
         x = query_instances_for_cf.iloc[[i]]
-        predicted_outcome = predictive_model.model.predict(x.values.reshape(1, -1))[0]
+        # predicted_outcome = predictive_model.model.predict(x.values.reshape(1, -1))[0] # not used
         logger.debug(f"test_id: {test_id}, i: {i}, code position: 1")
         for k in [5, 10, 15, 20]:
             time_start_i = datetime.now()
@@ -212,16 +214,13 @@ def dice_ltlf_explain(CONF, predictive_model, encoder, df, query_instances, meth
 
 
 def dice_model(predictive_model):
-    if predictive_model.model_type is ClassificationMethods.RANDOM_FOREST.value:
-        m = dice_ml.Model(model=predictive_model.model, backend='sklearn')
-    elif predictive_model.model_type is ClassificationMethods.PERCEPTRON.value:
-        m = dice_ml.Model(model=predictive_model.model, backend='sklearn')
-    elif predictive_model.model_type is ClassificationMethods.MLP.value:
-        m = dice_ml.Model(model=predictive_model.model, backend='sklearn')
-    elif predictive_model.model_type is ClassificationMethods.XGBOOST.value:
-        m = dice_ml.Model(model=predictive_model.model, backend='sklearn')
+    if predictive_model.model_type == 'lstm':
+        backend = 'TF2'
     else:
-        m = dice_ml.Model(model=predictive_model.model, backend='TF2')
+        # For xgboost, randomforest, etc.
+        backend = 'sklearn'
+
+    m = dice_ml.Model(model=predictive_model.model, backend=backend)
     return m
 
 
@@ -727,8 +726,9 @@ def conformance_score(encoder, df, features_names, ltlf_model, dfa):
         #jobs=4,
         dfa=dfa
     )
-    conformance_score = conf_check_res_df['accepted'].replace({True: 1, False: 0})
+    # conformance_score = conf_check_res_df['accepted'].replace({True: 1, False: 0})
     population_conformance = conf_check_res_df[conf_check_res_df['accepted'] == True].shape[0] / conf_check_res_df.shape[0]
+    logger.debug("conf_check_res_df sample:", conf_check_res_df.head())
     logger.info(f'Conformance score: {population_conformance}')
     return population_conformance
 
